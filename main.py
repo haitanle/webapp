@@ -34,7 +34,19 @@ class Handler(webapp2.RequestHandler):
 class MainPage (Handler):
 
 	def get(self):
-		self.render("front.html")
+		self.response.headers["Content-Type"] = "text/plain"   
+		visits = self.request.cookies.get('visits','0')  #get cookie 'visits' from the browser, 0 if None
+
+		if visits.isdigit():   #allow to convert 'visits' to a string 
+			visits = int(visits) + 1   #increment 'visits' each time it is visited
+		else:
+			visits = 0   #if 'visits' is 'None'
+
+		self.response.headers.add_header('Set-Cookie', 'visits=%s' %visits)   #reset the cookie 'visits' in the browser
+
+		self.write("You have visited this site %s times" %visits)    #print 'visits' count
+
+		
 
 
 app = webapp2.WSGIApplication([
