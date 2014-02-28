@@ -7,14 +7,28 @@ import jinja2   #had to add Jinja2 under libraries in app.yaml
 import os     #this module lets us get the path to our 'templates' folder 
 import webapp2
 
-
 #look for a templates folder inside of the applicaiton python package to find the html file
-template_dir = os.path.join(os.path.dirname(__file__), 'templates')     
+template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 
 #create the template environement, FileSystemLoader is a Python package that helps load a template 
 env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir), autoescape = True)
 
-#env = Environment(loader=PackageLoader('yourapplication', 'templates'))
+#Handle Hashing 
+import hashlib
+
+#get the Hash output from the value
+def hash_str(s): 
+    return hashlib.md5(s).hexdigest()
+
+#Return the value and Hash ouptut, used to Set-Cookie 
+def make_secure_val(s):
+    return "%s|%s" % (s, hash_str(s))
+
+#get value from cookie 'value | hashoutput'
+def check_secure_val(h):
+    value = h.rsplit('|', 1)[0]  #split by the first pip | (max 1), starting from the right side
+    if h == make_secure_val(value):
+        return value	
 
 class Handler(webapp2.RequestHandler):
 
@@ -27,24 +41,30 @@ class Handler(webapp2.RequestHandler):
 
 	def render_str(self, template, **kwargs):
 		return template.render(**kwargs)  # render/make the template website with input variables
-	
-	
 
 
 class MainPage (Handler):
 
 	def get(self):
-		self.response.headers["Content-Type"] = "text/plain"   
-		visits = self.request.cookies.get('visits','0')  #get cookie 'visits' from the browser, 0 if None
+		self.response.headers["Content-Type"] = "text/plain"
+		visits = 0    
+		visit_cookie_str = self.request.cookies.get('visits')  #get cookie 'visits' from the browser
+		if visit_cookie_str:
+			cookie_val = check_secure_val(visit_cookie_str) 
+			if cookie_val:
+				visits = int(cookie_val)
+		visits += 1    # update either from visits = 0 or from cookie's "visits"
 
-		if visits.isdigit():   #allow to convert 'visits' to a string 
-			visits = int(visits) + 1   #increment 'visits' each time it is visited
+		new_cookie_val = make_secure_val(str(visits))
+
+		self.response.headers.add_header('Set-Cookie', 'visits=%s' % new_cookie_val)   #set the cookie 'visits' in the browser
+																					#as a dictionary
+		
+
+		if visits>10000:
+			self.write("You ROCK!!")		
 		else:
-			visits = 0   #if 'visits' is 'None'
-
-		self.response.headers.add_header('Set-Cookie', 'visits=%s' %visits)   #reset the cookie 'visits' in the browser
-
-		self.write("You have visited this site %s times" %visits)    #print 'visits' count
+			self.write("You have visited this site %s times" %visits)    #print 'visits' count
 
 		
 
