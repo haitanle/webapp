@@ -7,6 +7,8 @@ import jinja2   #had to add Jinja2 under libraries in app.yaml
 import os     #this module lets us get the path to our 'templates' folder 
 import webapp2
 
+SECRET = 'mySecretKey'
+
 #look for a templates folder inside of the applicaiton python package to find the html file
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 
@@ -14,11 +16,11 @@ template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir), autoescape = True)
 
 #Handle Hashing 
-import hashlib
+import hmac
 
-#get the Hash output from the value
+#get the Hash output from the value using hmac
 def hash_str(s): 
-    return hashlib.md5(s).hexdigest()
+    return hmac.new(SECRET, s).hexdigest()
 
 #Return the value and Hash ouptut, used to Set-Cookie 
 def make_secure_val(s):
@@ -54,6 +56,7 @@ class MainPage (Handler):
 			if cookie_val:
 				visits = int(cookie_val)
 		visits += 1    # update either from visits = 0 or from cookie's "visits"
+		#if anyone tries to manipulate our data, it will reset to 1 
 
 		new_cookie_val = make_secure_val(str(visits))
 
