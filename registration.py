@@ -1,46 +1,140 @@
-import jinja2   #had to add Jinja2 under libraries in app.yaml
- #Add this under librar in app.yaml
-
-  #- name: jinja2                                                                  
-  #version: latest 
-
-import os     #this module lets us get the path to our 'templates' folder 
 import webapp2
+import cgi
+import re
 
+form = """
 
-#look for a templates folder inside of the applicaiton python package to find the html file
-template_dir = os.path.join(os.path.dirname(__file__), 'templates')     
+<html>
 
-#create the template environement, FileSystemLoader is a Python package that helps load a template 
-env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir), autoescape = True)
-
-#env = Environment(loader=PackageLoader('yourapplication', 'templates'))
-
-class Handler(webapp2.RequestHandler):
-
-	def write(self, *a , **kwargs):
-		self.response.out.write(*a, **kwargs)  #write out template website with input variables
-
-	def render(self, template, **kwargs):
-		template = env.get_template(template)   #load template environment to website
-		self.write(self.render_str(template, **kwargs))  
-
-	def render_str(self, template, **kwargs):
-		return template.render(**kwargs)  # render/make the template website with input variables
+<form method = "post">
+	<b>Signup</b>
+	<br>
+	<label> Username
+		<input type = "text" name= "username" value="%(username)s">
+	</label>
+	<div style="color:red">%(username_error)s </div> 
+	<label> Password
+		<input type = "password" name= "password" value="">   <!-- no return input if password do not match -->
+	</label>
+	<div style="color:red">%(password_error)s </div> 
+	<label> Re-enter Password
+		<input type = "password" name= "verify" value="">
+	</label>
+	<div style="color:red">%(password_verify_error)s </div> 
+	<label> Email (optional)
+		<input type = "text" name= "email" value="%(email)s">
+	</label>
+	<input type= "submit">
+	<div style="color:red">%(email_error)s </div>   <!-- string substition using dictionary -->
 	
+</form>
+</html> 
+"""
+
+def escape_html(s):
+	return cgi.escape(s,quote=True)
+
+USER_RE = re.compile(r"^[a-zA-Z0-9_-]{3,20}$")
+def validate_username(username):
+   return USER_RE.match(username)
+
+
+EMAIL_RE = re.compile(r"^[\S]+@[\S]+\.[\S]+$")
+def validate_email(email):
+	return EMAIL_RE.match(email)
+
+def validate_password(password):
+	if password:
+		return True
+	else:
+		return False
+
+
+
+class MainPage (webapp2.RequestHandler):
+	def get_form(self, username="", username_error="",
+						password_error="", password_verify_error="", 
+						email="", email_error=""):
+		self.response.out.write(form % ({"username":escape_html(username),     # html map : return value
+										"username_error":escape_html(username_error),
+										"password_error":escape_html(password_error),
+										"password_verify_error":escape_html(password_verify_error),
+										"email":escape_html(email),
+										"email_error":escape_html(email_error) }
+										))   
 	
-
-
-class MainPage (Handler):
 
 	def get(self):
-		self.render("front.html")
+		self.get_form()
+
+	def post(self):
+		
+		user_username = self.request.get("username")
+		user_password = self.request.get("password")
+		user_verify_pw = self.request.get("verify")
+		user_email = self.request.get("email")
+
+		valid_username = validate_username(user_username)
+		valid_password = validate_password(user_password)
+		valid_password_matched = user_password == user_verify_pw
+		valid_email = validate_email(user_email)
+
+		output = {'username':user_username, 'username_error':"",    #Create hashtable to map error out if needed
+					'password_error':"", 
+					'password_verify_error':"",
+					'email':"", 'email_error':""    }     
+
+		if not valid_username:
+			output['username_error'] = 'Invalid username'          #if not valid entry, replaces default
+
+		if not valid_password:
+			output['password_error'] = 'Invalid password'
+
+		if not valid_password_matched:
+			output['password_verify_error'] = 'Password does not match'
+
+		if user_email:      # use this so that non-email won't get Invalid message 
+			if not valid_email:
+				output['email'] = user_email
+				output['email_error'] = 'Invalid email'
+			else:
+				output['email'] = user_email   
+
+
+		if (valid_username and valid_password and valid_password_matched):
+			if valid_email or user_email == "":         
+				self.redirect('/welcome?username=%s'%user_username)  #redirection passes with query parameter
+			
+
+		self.get_form(username=output['username'],    #overriding default parameters if needed 
+					   username_error = output['username_error'],
+					   password_error = output['password_error'],
+					   password_verify_error = output['password_verify_error'],
+					   email = output['email'],
+					   email_error = output['email_error']   
+					 )     
+
+
+		
+
+class ThanksHandler (webapp2.RequestHandler):
+	def get(self):
+		username=self.request.get("username")  #get the username from the url query 
+		self.response.out.write("Welcome "+username)
+		
 
 
 app = webapp2.WSGIApplication([
-	('/', MainPage),
+	('/signup', MainPage),
+	('/welcome', ThanksHandler),   #URL mapping for the /thanks page
 	]
-	, debug =True)
+	, debug =True) 
+
+
+
+
+
+
 
 
 
