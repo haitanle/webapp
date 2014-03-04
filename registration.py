@@ -102,8 +102,9 @@ class MainPage (webapp2.RequestHandler):
 
 
 		if (valid_username and valid_password and valid_password_matched):
-			if valid_email or user_email == "":         
-				self.redirect('/welcome?username=%s'%user_username)  #redirection passes with query parameter
+			if valid_email or user_email == "":
+				self.response.headers.add_header('Set-Cookie', 'user_id=%s' %str(user_username))   #set username in cookie     
+				self.redirect('/welcome')  
 			
 
 		self.get_form(username=output['username'],    #overriding default parameters if needed 
@@ -119,8 +120,8 @@ class MainPage (webapp2.RequestHandler):
 
 class ThanksHandler (webapp2.RequestHandler):
 	def get(self):
-		username=self.request.get("username")  #get the username from the url query 
-		self.response.out.write("Welcome "+username)
+		user_id = self.request.cookies.get('user_id','Invalid user')  #get the user_id cookie from the browswer 
+		self.response.out.write("Welcome "+user_id)
 		
 
 
