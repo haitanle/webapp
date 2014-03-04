@@ -39,6 +39,44 @@ class User (db.Model):
 	email = db.StringProperty()
 
 
+#Hash and Salt Functions for password storage
+
+import random
+import string
+import hashlib
+
+def make_salt():
+    return ''.join(random.choice(string.letters) for x in range(5))   
+
+def make_pw_hash(name, pw, salt = None):
+    if salt is None:
+        salt = make_salt()   #Make Salt only if there is no Salt 
+    h = hashlib.sha256(name + pw + salt).hexdigest()
+    return '%s,%s' % (h, salt)
+
+def valid_pw(name, pw, h):
+    salt = h.split(",", 1)[1]
+    return make_pw_hash(name, pw, salt) == h
+
+
+#Implement the hash_str function to use HMAC and our SECRET for Cookie checking
+import hmac
+
+SECRET = 'secret'
+
+def hash_str(s):
+    return hmac.new (SECRET, s).hexdigest()
+
+def make_secure_val(s):
+    return "%s|%s" % (s, hash_str(s))
+
+def check_secure_val(h):
+    val = h.split('|')[0]
+    if h == make_secure_val(val):
+        return val
+
+
+
 
 def escape_html(s):
 	return cgi.escape(s,quote=True)
@@ -112,10 +150,16 @@ class MainPage (webapp2.RequestHandler):
 
 		if (valid_username and valid_password and valid_password_matched):
 			if valid_email or user_email == "":
-				user = User(username = user_username, password = user_password, 
-							email = user_password) #create username and password entry
+
+				pw_hash = make_pw_hash(user_username, user_password)   #Hash and Salt password
+
+				user = User(username = user_username, password = pw_hash, 
+							email = user_email) #create username, password, email entry
 				user.put()
-				self.response.headers.add_header('Set-Cookie', 'user_id=%s' %str(user_username))   #set username in cookie     
+
+				userID = str(user.key().id()) #Get User ID
+				hashID = make_secure_val(userID) #hash the ID 
+				self.response.headers.add_header('Set-Cookie', 'user_id=%s' %hashID)   #set ID in cookie     
 				self.redirect('/welcome')  
 			
 
@@ -129,19 +173,25 @@ class MainPage (webapp2.RequestHandler):
 
 
 		
-
 class ThanksHandler (webapp2.RequestHandler):
 	def get(self):
-		user_id = self.request.cookies.get('user_id','Invalid user')  #get the user_id cookie from the browswer 
-		self.response.out.write("Welcome "+user_id)
-		
+		hashID = self.request.cookies.get('user_id', None)  #get the user_id cookie from the browswer 
+		if hashID:
+			userID = check_secure_val(hashID) #return ID if valid 
+			if userID:
+				username = User.get_by_id(int(userID)).username   #get username from ID 
+				self.response.out.write("Welcome "+username)
+			else:
+				self.redirect('/signup')
+		else:
+			self.redirect('/signup')
 
 
 app = webapp2.WSGIApplication([
 	('/signup', MainPage),
 	('/welcome', ThanksHandler),   #URL mapping for the /thanks page
 	]
-	, debug =True) 
+	, debug =True)
 
 
 
