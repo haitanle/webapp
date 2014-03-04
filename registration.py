@@ -30,6 +30,15 @@ form = """
 </form>
 </html> 
 """
+#USER DATABASE
+from google.appengine.ext import db
+
+class User (db.Model):
+	username = db.StringProperty(required = True)
+	password = db.StringProperty(required = True)
+	email = db.StringProperty()
+
+
 
 def escape_html(s):
 	return cgi.escape(s,quote=True)
@@ -103,6 +112,9 @@ class MainPage (webapp2.RequestHandler):
 
 		if (valid_username and valid_password and valid_password_matched):
 			if valid_email or user_email == "":
+				user = User(username = user_username, password = user_password, 
+							email = user_password) #create username and password entry
+				user.put()
 				self.response.headers.add_header('Set-Cookie', 'user_id=%s' %str(user_username))   #set username in cookie     
 				self.redirect('/welcome')  
 			
