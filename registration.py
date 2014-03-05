@@ -96,6 +96,13 @@ def validate_password(password):
 	else:
 		return False
 
+#Check if username is unique 
+def unique_username(username):
+	q = db.GqlQuery("Select * from User")
+	for user in q:
+		if username == user.username:
+			return False 
+	return True 
 
 
 class MainPage (webapp2.RequestHandler):
@@ -122,6 +129,7 @@ class MainPage (webapp2.RequestHandler):
 		user_email = self.request.get("email")
 
 		valid_username = validate_username(user_username)
+		unique_user = unique_username(user_username)
 		valid_password = validate_password(user_password)
 		valid_password_matched = user_password == user_verify_pw
 		valid_email = validate_email(user_email)
@@ -133,6 +141,9 @@ class MainPage (webapp2.RequestHandler):
 
 		if not valid_username:
 			output['username_error'] = 'Invalid username'          #if not valid entry, replaces default
+		else:
+			if not unique_user:   #check for invalid username first, only 1 error message is produced
+				output['username_error'] = 'That user already exists'
 
 		if not valid_password:
 			output['password_error'] = 'Invalid password'
@@ -148,7 +159,7 @@ class MainPage (webapp2.RequestHandler):
 				output['email'] = user_email   
 
 
-		if (valid_username and valid_password and valid_password_matched):
+		if (valid_username and unique_user and valid_password and valid_password_matched):
 			if valid_email or user_email == "":
 
 				pw_hash = make_pw_hash(user_username, user_password)   #Hash and Salt password
@@ -159,7 +170,7 @@ class MainPage (webapp2.RequestHandler):
 
 				userID = str(user.key().id()) #Get User ID
 				hashID = make_secure_val(userID) #hash the ID 
-				self.response.headers.add_header('Set-Cookie', 'user_id=%s' %hashID)   #set ID in cookie     
+				self.response.headers.add_header('Set-Cookie', 'user_id=%s ; path = / ' %hashID)   #set ID in cookie     
 				self.redirect('/welcome')  
 			
 
