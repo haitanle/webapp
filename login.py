@@ -21,8 +21,6 @@ form = """
 </html> 
 """
 
-#USER DATABASE
-from google.appengine.ext import db
 
 #Hash and Salt Functions for password storage
 
@@ -81,13 +79,22 @@ def validate_password(password):
 	else:
 		return False
 
-#Check if username is unique 
-def unique_username(username):
+#USER DATABASE
+from google.appengine.ext import db
+
+class User (db.Model):
+	username = db.StringProperty(required = True)
+	password = db.StringProperty(required = True)
+	email = db.StringProperty()
+
+#Check if username exist and get the ID
+def username_exist(username):
 	q = db.GqlQuery("Select * from User")
 	for user in q:
 		if username == user.username:
-			return False 
-	return True 
+			return True, str(user.key().id())
+	return False, None
+
 
 class MainPage(webapp2.RequestHandler):
 	def get_form(self, username="", username_error="",
@@ -106,7 +113,7 @@ class MainPage(webapp2.RequestHandler):
 		user_password = self.request.get("password")
 
 		valid_username = validate_username(user_username)
-		unique_user = unique_username(user_username)
+		user_exist, userID = username_exist(user_username)
 		valid_password = validate_password(user_password)
 
 		output = {'username':user_username, 'username_error':"",    #Create hashtable to map error out if needed
@@ -115,16 +122,15 @@ class MainPage(webapp2.RequestHandler):
 		if not valid_username:
 			output['username_error'] = 'Invalid username'          #if not valid entry, replaces default
 		else:
-			if not unique_user:   #check for invalid username first, only 1 error message is produced
-				output['username_error'] = 'That user already exists'
+			if not user_exist:   #check for invalid username first, only 1 error message is produced
+				output['username_error'] = 'No such user'
 
 		if not valid_password:
 			output['password_error'] = 'Invalid password'
 
 
-		if (valid_username and unique_user and valid_password):
-			
-				userID = str(user.key().id()) #Get User ID
+		if (valid_username and user_exist and valid_password):
+
 				hashID = make_secure_val(userID) #hash the ID 
 				self.response.headers.add_header('Set-Cookie', 'user_id=%s ; path = / ' %hashID)   #set ID in cookie     
 				self.redirect('/welcome')  
@@ -136,6 +142,7 @@ class MainPage(webapp2.RequestHandler):
 					 )     
 
 class ThanksHandler (webapp2.RequestHandler):
+
 	def get(self):
 		hashID = self.request.cookies.get('user_id', None)  #get the user_id cookie from the browswer 
 		if hashID:
@@ -144,9 +151,9 @@ class ThanksHandler (webapp2.RequestHandler):
 				username = User.get_by_id(int(userID)).username   #get username from ID 
 				self.response.out.write("Welcome "+username)
 			else:
-				self.redirect('/signup')
+				self.redirect('/login')
 		else:
-			self.redirect('/signup')
+			self.redirect('/login')
 
 
 app = webapp2.WSGIApplication([
