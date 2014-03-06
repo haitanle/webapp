@@ -16,6 +16,7 @@ form = """
 	<label> Password
 		<input type = "password" name= "password" value="">   <!-- no return input if password do not match -->
 	</label>
+	<div style="color:red">%(password_error)s </div> 
 	<input type= "submit">
 </form> 
 </html> 
@@ -73,7 +74,7 @@ EMAIL_RE = re.compile(r"^[\S]+@[\S]+\.[\S]+$")
 def validate_email(email):
 	return EMAIL_RE.match(email)
 
-def validate_password(password):
+def validate_password(password):  #check if a password is entered 
 	if password:
 		return True
 	else:
@@ -92,7 +93,8 @@ def username_exist(username):
 	q = db.GqlQuery("Select * from User")
 	for user in q:
 		if username == user.username:
-			return True, str(user.key().id())
+			userID = str(user.key().id())
+			return True, userID  
 	return False, None
 
 
@@ -113,20 +115,25 @@ class MainPage(webapp2.RequestHandler):
 		user_password = self.request.get("password")
 
 		valid_username = validate_username(user_username)
-		user_exist, userID = username_exist(user_username)
-		valid_password = validate_password(user_password)
+		valid_password = False  #only check password if username is valid and unique
+		if valid_username:
+			user_exist, userID = username_exist(user_username) #if username exist, get True and userID
+
+			if userID:
+				pwHash = User.get_by_id(int(userID)).password
+				valid_password = valid_pw(user_username, user_password, pwHash)
 
 		output = {'username':user_username, 'username_error':"",    #Create hashtable to map error out if needed
 					'password_error':""}     
 
-		if not valid_username:
-			output['username_error'] = 'Invalid username'          #if not valid entry, replaces default
+		if not valid_username:  
+			output['username_error'] = 'Invalid username'         
 		else:
 			if not user_exist:   #check for invalid username first, only 1 error message is produced
 				output['username_error'] = 'No such user'
-
-		if not valid_password:
-			output['password_error'] = 'Invalid password'
+			else:
+				if not valid_password:
+					output['password_error'] = 'Incorrect password'
 
 
 		if (valid_username and user_exist and valid_password):
