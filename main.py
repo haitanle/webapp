@@ -1,18 +1,12 @@
 import jinja2   #had to add Jinja2 under libraries in app.yaml
- #Add this under librar in app.yaml
-
-  #- name: jinja2                                                                  
-  #version: latest 
-
 import os     #this module lets us get the path to our 'templates' folder 
 import webapp2
+import re
 
 SECRET = 'mySecretKey'
 
-#look for a templates folder inside of the applicaiton python package to find the html file
-template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 
-#create the template environement, FileSystemLoader is a Python package that helps load a template 
+template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir), autoescape = True)
 
 #Handle Hashing 
@@ -35,45 +29,37 @@ def check_secure_val(h):
 class Handler(webapp2.RequestHandler):
 
 	def write(self, *a , **kwargs):
-		self.response.out.write(*a, **kwargs)  #write out template website with input variables
-
-	def render(self, template, **kwargs):
-		template = env.get_template(template)   #load template environment to website
-		self.write(self.render_str(template, **kwargs))  
+		self.response.out.write(*a, **kwargs)  #write out template website with Template environment
 
 	def render_str(self, template, **kwargs):
+		template = env.get_template(template)   #load template environment
 		return template.render(**kwargs)  # render/make the template website with input variables
+ 
+	def render(self, template, **kwargs):
+		self.write(self.render_str(template, **kwargs))  
 
+	
+class Signup(Handler):
 
-class MainPage (Handler):
+	# def render_front(self, template, username="", username_error = "", password_error= "", 
+	# 								password_verify_error = "", email = "", email_error = ""):
+
+	# 	if template == "front.html":
+	# 		blogs = db.GqlQuery("Select * From Blog Order By created DESC LIMIT 10")
+
+	# 	self.render(template, subject = subject, 
+	# 							  content = content, 
+	# 							  error = error, 
+	# 							  blogs = blogs)
 
 	def get(self):
-		self.response.headers["Content-Type"] = "text/plain"
-		visits = 0    
-		visit_cookie_str = self.request.cookies.get('visits')  #get cookie 'visits' from the browser
-		if visit_cookie_str:
-			cookie_val = check_secure_val(visit_cookie_str) 
-			if cookie_val:
-				visits = int(cookie_val)
-		visits += 1    # update either from visits = 0 or from cookie's "visits"
-		#if anyone tries to manipulate our data, it will reset to 1 
-
-		new_cookie_val = make_secure_val(str(visits))
-
-		self.response.headers.add_header('Set-Cookie', 'visits=%s' % new_cookie_val)   #set the cookie 'visits' in the browser
-																					#as a dictionary
-		
-
-		if visits>10000:
-			self.write("You ROCK!!")		
-		else:
-			self.write("You have visited this site %s times" %visits)    #print 'visits' count
-
-		
+		self.render("registration.html")
 
 
 app = webapp2.WSGIApplication([
-	('/', MainPage),
+	('/signup', Signup),
+	#('/login', Login), 
+	#('/welcome', Welcome)
 	]
 	, debug =True)
 
