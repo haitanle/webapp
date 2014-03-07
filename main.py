@@ -5,9 +5,33 @@ import re
 
 SECRET = 'mySecretKey'
 
+#USER DATABASE
+from google.appengine.ext import db
 
-template_dir = os.path.join(os.path.dirname(__file__), 'templates')
-env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir), autoescape = True)
+class User (db.Model):
+	username = db.StringProperty(required = True)
+	password = db.StringProperty(required = True)
+	email = db.StringProperty()
+
+#Hash and Salt Functions for password storage
+
+import random
+import string
+import hashlib
+
+def make_salt():
+    return ''.join(random.choice(string.letters) for x in range(5))   
+
+def make_pw_hash(name, pw, salt = None):
+    if salt is None:
+        salt = make_salt()   #Make Salt only if there is no Salt 
+    h = hashlib.sha256(name + pw + salt).hexdigest()
+    return '%s,%s' % (h, salt)
+
+def valid_pw(name, pw, h):
+    salt = h.split(",", 1)[1]
+    return make_pw_hash(name, pw, salt) == h
+
 
 #Handle Hashing 
 import hmac
@@ -26,6 +50,32 @@ def check_secure_val(h):
     if h == make_secure_val(value):
         return value	
 
+USER_RE = re.compile(r"^[a-zA-Z0-9_-]{3,20}$")
+def validate_username(username):
+   return USER_RE.match(username)
+
+
+EMAIL_RE = re.compile(r"^[\S]+@[\S]+\.[\S]+$")
+def validate_email(email):
+	return not email or EMAIL_RE.match(email)   #check if only email is present 
+
+def validate_password(password):
+	if password:
+		return True
+	else:
+		return False
+
+#Check if username is unique 
+def unique_username(username):
+	q = db.GqlQuery("Select * from User")
+	for user in q:
+		if username == user.username:
+			return False 
+	return True 
+
+template_dir = os.path.join(os.path.dirname(__file__), 'templates')
+env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir), autoescape = True)
+
 class Handler(webapp2.RequestHandler):
 
 	def write(self, *a , **kwargs):
@@ -41,25 +91,69 @@ class Handler(webapp2.RequestHandler):
 	
 class Signup(Handler):
 
-	# def render_front(self, template, username="", username_error = "", password_error= "", 
-	# 								password_verify_error = "", email = "", email_error = ""):
-
-	# 	if template == "front.html":
-	# 		blogs = db.GqlQuery("Select * From Blog Order By created DESC LIMIT 10")
-
-	# 	self.render(template, subject = subject, 
-	# 							  content = content, 
-	# 							  error = error, 
-	# 							  blogs = blogs)
-
 	def get(self):
 		self.render("registration.html")
+
+	def post(self):
+		have_error = False
+		user_username = self.request.get("username")
+		user_password = self.request.get("password")
+		user_verify_pw = self.request.get("verify")
+		user_email = self.request.get("email")
+
+		param = dict(username = user_username,   #Dictionary constructor
+						email = user_email)
+
+		if not validate_username(user_username):
+			param['username_error'] = 'Invalid username'
+			have_error = True 
+		elif not unique_username(user_username):
+			param['username_error'] = 'That user already exists'
+			have_error = True 
+
+		if not validate_password(user_password):
+		 	param['password_error'] = 'Invalid password'
+			have_error = True 
+		elif not user_password == user_verify_pw:
+			param['password_verify_error'] = "Your passwords didn't match."
+			have_error = True
+	
+		if not validate_email(user_email):
+			param['email_error'] = 'Invalid email'
+			have_error = True
+
+
+		if have_error:
+			self.render("registration.html", **param)
+		else:
+			pw_hash = make_pw_hash(user_username, user_password)   #Hash and Salt password
+			user = User(username = user_username, password = pw_hash, 
+							email = user_email) #create username, password, email entry
+			
+			user.put()
+			userID = str(user.key().id()) #Get User ID
+			hashID = make_secure_val(userID) #hash the ID 
+			self.response.headers.add_header('Set-Cookie', 'user_id=%s ; path = / ' %hashID)   #set ID in cookie     
+			self.redirect('/welcome')      
+
+class WelcomeHandler (webapp2.RequestHandler):
+	def get(self):
+		hashID = self.request.cookies.get('user_id', None)  #get the user_id cookie from the browswer 
+		if hashID:
+			userID = check_secure_val(hashID) #return ID if valid 
+			if userID:
+				username = User.get_by_id(int(userID)).username   #get username from ID 
+				self.response.out.write("Welcome "+username)
+			else:
+				self.redirect('/signup')
+		else:
+			self.redirect('/signup')
 
 
 app = webapp2.WSGIApplication([
 	('/signup', Signup),
 	#('/login', Login), 
-	#('/welcome', Welcome)
+	('/welcome', WelcomeHandler)
 	]
 	, debug =True)
 
