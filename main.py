@@ -33,7 +33,7 @@ def valid_pw(name, pw, h):
     return make_pw_hash(name, pw, salt) == h
 
 
-#Handle Hashing 
+#Handle Hashing for 'cookie'
 import hmac
 
 #get the Hash output from the value using hmac
@@ -114,7 +114,7 @@ class Signup(Handler):
 		if not validate_password(user_password):
 		 	param['password_error'] = 'Invalid password'
 			have_error = True 
-		elif not user_password == user_verify_pw:
+		elif user_password != user_verify_pw:
 			param['password_verify_error'] = "Your passwords didn't match."
 			have_error = True
 	
