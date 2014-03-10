@@ -65,13 +65,22 @@ def validate_password(password):
 	else:
 		return False
 
-#Check if username is unique 
+#Check if username is unique
 def unique_username(username):
 	q = db.GqlQuery("Select * from User")
 	for user in q:
 		if username == user.username:
 			return False 
 	return True 
+
+#Check if username exist and get the ID
+def username_exist(username):
+	q = db.GqlQuery("Select * from User")
+	for user in q:
+		if username == user.username:
+			userID = str(user.key().id())
+			return True, userID  
+	return False, None
 
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir), autoescape = True)
@@ -134,7 +143,49 @@ class Signup(Handler):
 			userID = str(user.key().id()) #Get User ID
 			hashID = make_secure_val(userID) #hash the ID 
 			self.response.headers.add_header('Set-Cookie', 'user_id=%s ; path = / ' %hashID)   #set ID in cookie     
-			self.redirect('/welcome')      
+			self.redirect('/welcome')
+
+class Login(Handler):
+	
+	def get(self):
+		self.render("login.html")
+
+	def post(self):
+		user_username = self.request.get("username")
+		user_password = self.request.get("password")
+
+		valid_username = validate_username(user_username)
+		valid_password = False  #only check password if username is valid and unique
+		if valid_username:
+			user_exist, userID = username_exist(user_username) #if username exist, get True and userID
+
+			if userID:
+				pwHash = User.get_by_id(int(userID)).password
+				valid_password = valid_pw(user_username, user_password, pwHash)
+
+		params = dict(username = user_username)
+
+		if not valid_username:  
+			params['username_error'] = 'Invalid username'         
+		else:
+			if not user_exist:   #check for invalid username first, only 1 error message is produced
+				params['username_error'] = 'No such user'
+			else:
+				if not valid_password:
+					params['password_error'] = 'Incorrect password'
+
+
+		if (valid_username and user_exist and valid_password):
+
+				hashID = make_secure_val(userID) #hash the ID 
+				self.response.headers.add_header('Set-Cookie', 'user_id=%s ; path = / ' %hashID)   #set ID in cookie     
+				self.redirect('/welcome')  
+			
+
+		self.render("login.html", **params)
+
+
+
 
 class WelcomeHandler (webapp2.RequestHandler):
 	def get(self):
@@ -152,7 +203,7 @@ class WelcomeHandler (webapp2.RequestHandler):
 
 app = webapp2.WSGIApplication([
 	('/signup', Signup),
-	#('/login', Login), 
+	('/login', Login), 
 	('/welcome', WelcomeHandler)
 	]
 	, debug =True)
