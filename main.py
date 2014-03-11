@@ -102,7 +102,9 @@ class Handler(webapp2.RequestHandler):
 		self.response.headers.add_header('Set-Cookie', '%s=%s ; path = / ' %(name, val))   #set cookie in header
 
 	def read_secure_cookie(self, name):
-		pass 
+		cookie_val = self.request.cookies.get(name, None)  #get the 'name' cookie from the browswer 
+		return cookie_val and check_secure_val(cookie_val) #return value if hashID exist
+		
 
 
 class Signup(Handler):
@@ -192,18 +194,14 @@ class Login(Handler):
 
 
 
-class WelcomeHandler (webapp2.RequestHandler):
+class WelcomeHandler (Handler):
 	def get(self):
-		hashID = self.request.cookies.get('user_id', None)  #get the user_id cookie from the browswer 
-		if hashID:
-			userID = check_secure_val(hashID) #return ID if valid 
-			if userID:
+		userID = self.read_secure_cookie('user_id')
+		if userID:
 				username = User.get_by_id(int(userID)).username   #get username from ID 
 				self.response.out.write("Welcome "+username)
-			else:
-				self.redirect('/signup')
 		else:
-			self.redirect('/signup')
+				self.redirect('/signup')
 
 
 app = webapp2.WSGIApplication([
