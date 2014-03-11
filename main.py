@@ -104,7 +104,13 @@ class Handler(webapp2.RequestHandler):
 	def read_secure_cookie(self, name):
 		cookie_val = self.request.cookies.get(name, None)  #get the 'name' cookie from the browswer 
 		return cookie_val and check_secure_val(cookie_val) #return value if hashID exist
-		
+	
+	def initialize(self, *a, **kw): #override's GAE initialize to also check for userID
+		webapp2.RequestHandler.initialize(self, *a, **kw)  #create Handler object for request, response
+		uid = self.read_secure_cookie('user_id') #get user's ID from cookie
+		self.user = uid and User.get_by_id(int(uid)) #set ID to self.user
+
+
 
 
 class Signup(Handler):
@@ -182,24 +188,18 @@ class Login(Handler):
 				if not valid_password:
 					params['password_error'] = 'Incorrect password'
 
-
 		if (valid_username and user_exist and valid_password):
 
 				self.set_secure_cookie('user_id', userID)
 				self.redirect('/welcome')  
-			
-
 		self.render("login.html", **params)
 
 
-
-
 class WelcomeHandler (Handler):
+
 	def get(self):
-		userID = self.read_secure_cookie('user_id')
-		if userID:
-				username = User.get_by_id(int(userID)).username   #get username from ID 
-				self.response.out.write("Welcome "+username)
+		if self.user: 
+				self.render("welcome.html", username = self.user.username) #username from user object
 		else:
 				self.redirect('/signup')
 
