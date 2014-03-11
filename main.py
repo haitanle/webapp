@@ -95,9 +95,16 @@ class Handler(webapp2.RequestHandler):
 		return template.render(**kwargs)  # render/make the template website with input variables
  
 	def render(self, template, **kwargs):
-		self.write(self.render_str(template, **kwargs))  
+		self.write(self.render_str(template, **kwargs))
 
-	
+	def set_secure_cookie(self, name, val):
+		val = make_secure_val(val) #hash the value
+		self.response.headers.add_header('Set-Cookie', '%s=%s ; path = / ' %(name, val))   #set cookie in header
+
+	def read_secure_cookie(self, name):
+		pass 
+
+
 class Signup(Handler):
 
 	def get(self):
@@ -141,8 +148,7 @@ class Signup(Handler):
 			
 			user.put()
 			userID = str(user.key().id()) #Get User ID
-			hashID = make_secure_val(userID) #hash the ID 
-			self.response.headers.add_header('Set-Cookie', 'user_id=%s ; path = / ' %hashID)   #set ID in cookie     
+			self.set_secure_cookie('user_id', userID)
 			self.redirect('/welcome')
 
 class Login(Handler):
@@ -177,8 +183,7 @@ class Login(Handler):
 
 		if (valid_username and user_exist and valid_password):
 
-				hashID = make_secure_val(userID) #hash the ID 
-				self.response.headers.add_header('Set-Cookie', 'user_id=%s ; path = / ' %hashID)   #set ID in cookie     
+				self.set_secure_cookie('user_id', userID)
 				self.redirect('/welcome')  
 			
 
