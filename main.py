@@ -125,7 +125,7 @@ class Handler(webapp2.RequestHandler):
 		self.user = uid and User.get_by_id(int(uid)) #set ID to self.user
 
 	def login(self, user):
-		pass
+		self.set_secure_cookie('user_id', str(user.key().id()))  #log the user by setting cookie to ID
 
 	def logout(self):
 		self.response.headers.add_header('Set-Cookie', 'user_id =; path = /')
@@ -173,7 +173,6 @@ class Signup(Handler):  #form and input checking for registration page
 			self.done()
 			
 			# userID = str(user.key().id()) #Get User ID
-			# self.set_secure_cookie('user_id', userID)
 
 		def done(self, *a, **kw):   #won't be used, registration implements its own 'done' method
 			raise NotImplementedError 
@@ -189,7 +188,7 @@ class Registration(Signup):  #uses 'get' and 'post' method of Signup
 			newUser = User.register(self.user_username,    #register user with class method 
 					           self.user_password, self.user_email)
 			newUser.put()
-			login() 
+			self.login(newUser) 
 			self.redirect('/welcome')
 
 
