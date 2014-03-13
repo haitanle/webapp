@@ -208,7 +208,7 @@ class Login(Handler):
 
 			if userID:
 				pwHash = User.get_by_id(int(userID)).password
-				valid_password = valid_pw(user_username, self.user_password, pwHash)
+				valid_password = valid_pw(user_username, user_password, pwHash)
 
 		params = dict(username = user_username)
 
@@ -236,11 +236,17 @@ class WelcomeHandler (Handler):
 		else:
 				self.redirect('/signup')
 
+class LogoutHandler(Handler):
+	def get(self):
+		self.logout()
+		self.write("You have logout, thanks for visiting")
+
 
 app = webapp2.WSGIApplication([
 	('/signup', Registration),
 	('/login', Login), 
-	('/welcome', WelcomeHandler)
+	('/welcome', WelcomeHandler),
+	('/logout', LogoutHandler)
 	]
 	, debug =True)
 
