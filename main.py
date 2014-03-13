@@ -17,6 +17,16 @@ class User (db.Model):
 	def by_name(cls, name):  #class method to get the entity by the name
 		return cls.all().filter('username =', name).get()
 
+	@classmethod   #create User object
+	def register(cls,username, password, email = ""):
+		pw_hash = make_pw_hash(username, password)   #Hash and Salt password
+		user = User(username = username, password = pw_hash, email = email) #create username, password, email entry 
+		return user
+
+	@classmethod
+	def login(cls,username):
+		pass
+
 #Hash and Salt Functions for password storage
 
 import random
@@ -131,12 +141,12 @@ class Signup(Handler):  #form and input checking for registration page
 	def post(self):
 		have_error = False
 		self.user_username = self.request.get("username")
-		user_password = self.request.get("password")
-		user_verify_pw = self.request.get("verify")
-		user_email = self.request.get("email")
+		self.user_password = self.request.get("password")
+		self.user_verify_pw = self.request.get("verify")
+		self.user_email = self.request.get("email")
 
 		param = dict(username = self.user_username,   #Dictionary constructor
-						email = user_email)
+						email = self.user_email)
 
 		if not validate_username(self.user_username):
 			param['username_error'] = 'Invalid username'
@@ -145,14 +155,14 @@ class Signup(Handler):  #form and input checking for registration page
 		# 	param['username_error'] = 'That user already exists'
 		# 	have_error = True 
 
-		if not validate_password(user_password):
+		if not validate_password(self.user_password):
 		 	param['password_error'] = 'Invalid password'
 			have_error = True 
-		elif user_password != user_verify_pw:
+		elif self.user_password != self.user_verify_pw:
 			param['password_verify_error'] = "Your passwords didn't match."
 			have_error = True
 	
-		if not validate_email(user_email):
+		if not validate_email(self.user_email):
 			param['email_error'] = 'Invalid email'
 			have_error = True
 
@@ -161,14 +171,9 @@ class Signup(Handler):  #form and input checking for registration page
 			self.render("registration.html", **param)
 		else:
 			self.done()
-			# pw_hash = make_pw_hash(user_username, user_password)   #Hash and Salt password
-			# user = User(username = user_username, password = pw_hash, 
-			# 				email = user_email) #create username, password, email entry
 			
-			# user.put()
 			# userID = str(user.key().id()) #Get User ID
 			# self.set_secure_cookie('user_id', userID)
-			# self.redirect('/welcome')
 
 		def done(self, *a, **kw):   #won't be used, registration implements its own 'done' method
 			raise NotImplementedError 
@@ -181,7 +186,11 @@ class Registration(Signup):  #uses 'get' and 'post' method of Signup
 			msg = 'That user already exist'
 			self.render("registration.html", username_error = msg)
 		else:
-			pass
+			newUser = User.register(self.user_username,    #register user with class method 
+					           self.user_password, self.user_email)
+			newUser.put()
+			login() 
+			self.redirect('/welcome')
 
 
 class Login(Handler):
@@ -200,7 +209,7 @@ class Login(Handler):
 
 			if userID:
 				pwHash = User.get_by_id(int(userID)).password
-				valid_password = valid_pw(user_username, user_password, pwHash)
+				valid_password = valid_pw(user_username, self.user_password, pwHash)
 
 		params = dict(username = user_username)
 
