@@ -14,7 +14,7 @@ class User (db.Model):
 	email = db.StringProperty()
 
 	@classmethod
-	def by_name(cls, name):  #class method to get the entity by the name
+	def by_name(cls, name):  #class method to get the entity by the name, do this instead of GQl query
 		return cls.all().filter('username =', name).get()
 
 	@classmethod   #create User object
@@ -24,8 +24,10 @@ class User (db.Model):
 		return user
 
 	@classmethod
-	def login(cls,username):
-		pass
+	def login(cls,username, pw):   #check if user and pw is valid from Login page
+		u = cls.by_name(username)
+		if u and valid_pw(username, pw, u.password):
+			return u 
 
 #Hash and Salt Functions for password storage
 
@@ -95,6 +97,7 @@ def username_exist(username):
 			userID = str(user.key().id())
 			return True, userID  
 	return False, None
+
 
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir), autoescape = True)
@@ -221,17 +224,18 @@ class Login(Handler):
 				if not valid_password:
 					params['password_error'] = 'Incorrect password'
 
-		if (valid_username and user_exist and valid_password):
-
-				self.set_secure_cookie('user_id', userID)
-				self.redirect('/welcome')  
-		self.render("login.html", **params)
+		u = User.login(user_username, user_password)
+		if u:
+				self.set_secure_cookie('user_id', str(u.key().id()))
+				self.redirect('/welcome') 
+		else:
+			self.render("login.html", **params)
 
 
 class WelcomeHandler (Handler):
 
 	def get(self):
-		if self.user: 
+		if self.user: #check if the user exists from the 'initialize' function
 				self.render("welcome.html", username = self.user.username) #username from user object
 		else:
 				self.redirect('/signup')
