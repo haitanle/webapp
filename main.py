@@ -239,7 +239,7 @@ class WelcomeHandler (Handler):
 class LogoutHandler(Handler):
 	def get(self):
 		self.logout()
-		self.write("You have logout, thanks for visiting")
+		self.redirect('/signup')
 
 
 app = webapp2.WSGIApplication([
