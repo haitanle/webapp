@@ -3,7 +3,7 @@ import os     #this module lets us get the path to our 'templates' folder
 import webapp2
 import re
 
-SECRET = 'mySecretKey'
+SECRET = 'mySecretKey'   #used to Hash cookie 
 
 #USER DATABASE
 from google.appengine.ext import db
@@ -28,6 +28,13 @@ class User (db.Model):
 		u = cls.by_name(username)
 		if u and valid_pw(username, pw, u.password):
 			return u 
+
+class Blog (db.Model):
+
+	subject = db.StringProperty(required = True)
+	content = db.TextProperty(required = True)
+	created = db.DateTimeProperty(auto_now_add = True)
+	user = db.StringProperty(required = True)
 
 #Hash and Salt Functions for password storage
 
@@ -154,9 +161,6 @@ class Signup(Handler):  #form and input checking for registration page
 		if not validate_username(self.user_username):
 			param['username_error'] = 'Invalid username'
 			have_error = True 
-		# elif not unique_username(user_username):
-		# 	param['username_error'] = 'That user already exists'
-		# 	have_error = True 
 
 		if not validate_password(self.user_password):
 		 	param['password_error'] = 'Invalid password'
@@ -175,7 +179,6 @@ class Signup(Handler):  #form and input checking for registration page
 		else:
 			self.done()
 			
-			# userID = str(user.key().id()) #Get User ID
 
 		def done(self, *a, **kw):   #won't be used, registration implements its own 'done' method
 			raise NotImplementedError 
@@ -192,8 +195,7 @@ class Registration(Signup):  #uses 'get' and 'post' method of Signup
 					           self.user_password, self.user_email)
 			newUser.put()
 			self.login(newUser) 
-			self.redirect('/welcome')
-
+			self.redirect('/blog')
 
 class Login(Handler):
 	
@@ -227,7 +229,7 @@ class Login(Handler):
 		u = User.login(user_username, user_password)
 		if u:
 				self.set_secure_cookie('user_id', str(u.key().id()))
-				self.redirect('/welcome') 
+				self.redirect('/blog') 
 		else:
 			self.render("login.html", **params)
 
@@ -240,6 +242,29 @@ class WelcomeHandler (Handler):
 		else:
 				self.redirect('/signup')
 
+class BlogHandler(Handler):
+
+	def get(self):
+		posts = Blog.all().order('-created')
+		self.render("blog.html", posts= posts)
+
+	def post(self):
+
+		subject = self.request.get("subject")
+		content = self.request.get("content")
+		user = self.user.username
+
+
+		if subject and content:
+			post = Blog(subject = subject, content = content, user = user)
+			post.put()
+			self.redirect('/blog')
+		else:
+			msg = "Enter both a subject and content"
+			self.render("blog.html", error = msg)
+
+
+
 class LogoutHandler(Handler):
 	def get(self):
 		self.logout()
@@ -250,7 +275,8 @@ app = webapp2.WSGIApplication([
 	('/signup', Registration),
 	('/login', Login), 
 	('/welcome', WelcomeHandler),
-	('/logout', LogoutHandler)
+	('/logout', LogoutHandler),
+	('/blog', BlogHandler)
 	]
 	, debug =True)
 
