@@ -263,6 +263,26 @@ class BlogHandler(Handler):
 			msg = "Enter both a subject and content"
 			self.render("blog.html", error = msg)
 
+class BlogWithLocation(Handler):
+
+	def get(self):
+		posts = Blog.all().order('-created')
+		self.render("blog.html", posts= posts)
+
+	def post(self):
+
+		subject = self.request.get("subject")
+		content = self.request.get("content")
+		user = self.user.username
+
+
+		if subject and content:
+			post = Blog(subject = subject, content = content, user = user)
+			post.put()
+			self.redirect('/blog')
+		else:
+			msg = "Enter both a subject and content"
+			self.render("blog.html", error = msg)
 
 
 class LogoutHandler(Handler):
@@ -276,7 +296,8 @@ app = webapp2.WSGIApplication([
 	('/login', Login), 
 	('/welcome', WelcomeHandler),
 	('/logout', LogoutHandler),
-	('/blog', BlogHandler)
+	('/blog', BlogHandler), 
+	('/blogLocation', BlogWithLocation)
 	]
 	, debug =True)
 
