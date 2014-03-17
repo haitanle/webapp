@@ -35,6 +35,7 @@ class Blog (db.Model):
 	content = db.TextProperty(required = True)
 	created = db.DateTimeProperty(auto_now_add = True)
 	user = db.StringProperty(required = True)
+	coors = db.GeoPtProperty()
 
 #Hash and Salt Functions for password storage
 
@@ -291,6 +292,7 @@ class BlogHandler(Handler):
 class BlogWithLocation(Handler):
 
 	def get(self):
+		self.write(self.request.remote_addr)
 		self.write(repr(getCoors(self.request.remote_addr)))  
 		posts = Blog.all().order('-created')
 		self.render("blog.html", posts= posts)
@@ -300,10 +302,10 @@ class BlogWithLocation(Handler):
 		subject = self.request.get("subject")
 		content = self.request.get("content")
 		user = self.user.username
-
+		coors = getCoors(self.request.remote_addr)
 
 		if subject and content:
-			post = Blog(subject = subject, content = content, user = user)
+			post = Blog(subject = subject, content = content, user = user, coors = coors)
 			post.put()
 			self.redirect('/blog')
 		else:
