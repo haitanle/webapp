@@ -140,6 +140,31 @@ class Handler(webapp2.RequestHandler):
 	def logout(self):
 		self.response.headers.add_header('Set-Cookie', 'user_id =; path = /')
 
+from xml.dom import minidom
+
+def get_coords(xml):
+    x = minidom.parseString(xml)
+    coordinates =  x.getElementsByTagName("gml:coordinates")[0].childNodes[0].nodeValue
+    if coordinates:
+        lon, lat = coordinates.split(',') 
+        # return lat, lon
+        return db.GeoPt(lat,lon)  #DataStore Coordinates type
+
+import urllib2 
+
+IP_URL = 'http://api.hostip.info/?ip='
+def getCoors(ip):
+	ip = "4.2.2.2"   #test ip
+	url = IP_URL + ip 
+	content = None 
+	try:
+		content = urllib2.urlopen(url).read()
+	except URLError:
+		return 
+
+	if content: 
+		return get_coords(content)
+
 
 
 
@@ -266,6 +291,7 @@ class BlogHandler(Handler):
 class BlogWithLocation(Handler):
 
 	def get(self):
+		self.write(repr(getCoors(self.request.remote_addr)))  
 		posts = Blog.all().order('-created')
 		self.render("blog.html", posts= posts)
 
