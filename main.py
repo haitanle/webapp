@@ -294,7 +294,15 @@ class BlogWithLocation(Handler):
 	def get(self):
 		self.write(self.request.remote_addr)
 		self.write(repr(getCoors(self.request.remote_addr)))  
-		posts = Blog.all().order('-created')
+		posts = Blog.all().order('-created').run(limit=5)
+
+		#cache all blog posts, reduce SQL request
+		posts = list(posts)  
+
+		#find which blogs have coordinates
+		points = filter(None, (a.coors for a in posts))  #list of entity with coordinates
+
+
 		self.render("blog.html", posts= posts)
 
 	def post(self):
