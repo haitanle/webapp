@@ -276,10 +276,10 @@ class WelcomeHandler (Handler):
 		else:
 				self.redirect('/signup')
 
-class BlogHandler(Handler):
+class BlogHandler(Handler):   #'/blog' 
 
 	def get(self):
-		posts = Blog.all().order('-created')
+		posts = Blog.all().order('-created').run(limit=10)
 		self.render("blog.html", posts= posts)
 
 	def post(self):
@@ -296,6 +296,22 @@ class BlogHandler(Handler):
 		else:
 			msg = "Enter both a subject and content"
 			self.render("blog.html", error = msg)
+
+class BlogJsonHandler(Handler):
+	
+	def get(self):
+
+		#retrieve last 10 blog entry
+		posts = Blog.all().order('-created').run(limit=10)
+		 
+		#put blog information into dictionary, store all dictionary in list 
+		for post in posts:
+			
+
+		
+		
+		#write out list in HTML page 
+
 
 class BlogWithLocation(Handler):
 
@@ -343,7 +359,8 @@ app = webapp2.WSGIApplication([
 	('/login', Login), 
 	('/welcome', WelcomeHandler),
 	('/logout', LogoutHandler),
-	('/blog', BlogHandler), 
+	('/blog', BlogHandler),
+	('/blog.json', BlogJsonHandler), 
 	('/blogLocation', BlogWithLocation)
 	]
 	, debug =True)
