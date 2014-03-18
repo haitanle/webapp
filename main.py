@@ -144,10 +144,10 @@ class Handler(webapp2.RequestHandler):
 from xml.dom import minidom
 
 def get_coords(xml):
-    x = minidom.parseString(xml)
-    coordinates =  x.getElementsByTagName("gml:coordinates")[0].childNodes[0].nodeValue
-    if coordinates:
-        lon, lat = coordinates.split(',') 
+    d = minidom.parseString(xml)
+    coords = d.getElementsByTagName("gml:coordinates")
+    if coords and coords[0].childNodes[0].nodeValue:
+    	lon, lat = coords[0].childNodes[0].nodeValue.split(',')
         # return lat, lon
         return db.GeoPt(lat,lon)  #DataStore Coordinates type
 
@@ -156,6 +156,7 @@ import urllib2
 IP_URL = 'http://api.hostip.info/?ip='
 def getCoors(ip):
 	ip = "4.2.2.2"   #test ip
+	ip = "174.121.194.34"
 	url = IP_URL + ip 
 	content = None 
 	try:
@@ -165,6 +166,13 @@ def getCoors(ip):
 
 	if content: 
 		return get_coords(content)
+
+
+GMAPS_URL = "http://maps.googleapis.com/maps/api/staticmap?size=380x263&sensor=false&"
+def gmaps_img(points):
+    markers = ''
+    markers = '&'.join('markers=%s,%s' %(p.lat, p.lon) for p in points)
+    return GMAPS_URL + markers
 
 
 
@@ -302,8 +310,11 @@ class BlogWithLocation(Handler):
 		#find which blogs have coordinates
 		points = filter(None, (a.coors for a in posts))  #list of entity with coordinates
 
+		img_url = None  
+		if points:
+			img_url = gmaps_img(points)  #get the img URL of all coordinates point
 
-		self.render("blog.html", posts= posts)
+		self.render("blog.html", posts= posts, img_url = img_url)
 
 	def post(self):
 
