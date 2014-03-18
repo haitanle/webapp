@@ -34,7 +34,7 @@ class Blog (db.Model):
 	subject = db.StringProperty(required = True)
 	content = db.TextProperty(required = True)
 	created = db.DateTimeProperty(auto_now_add = True)
-	user = db.StringProperty(required = True)
+	user = db.StringProperty()
 	coors = db.GeoPtProperty()
 
 #Hash and Salt Functions for password storage
@@ -297,6 +297,8 @@ class BlogHandler(Handler):   #'/blog'
 			msg = "Enter both a subject and content"
 			self.render("blog.html", error = msg)
 
+import time 
+
 class BlogJsonHandler(Handler):
 	
 	def get(self):
@@ -305,12 +307,15 @@ class BlogJsonHandler(Handler):
 		posts = Blog.all().order('-created').run(limit=10)
 		 
 		#put blog information into dictionary, store all dictionary in list 
+		blogList = []
 		for post in posts:
-			
+			time = post.created.strftime("%a %b %d %H:%M:%S %Y")   
+			blogDict = dict(subject = post.subject, content = post.content, created = time)
+			blogList.append(blogDict)	
+		
 
-		
-		
-		#write out list in HTML page 
+		#write out list in HTML page
+		self.write((blogList))
 
 
 class BlogWithLocation(Handler):
@@ -347,6 +352,40 @@ class BlogWithLocation(Handler):
 			msg = "Enter both a subject and content"
 			self.render("blog.html", error = msg)
 
+class PostHandler(Handler):
+	
+	def get(self):
+		self.render("post.html")
+
+	def post(self):
+
+		subject = self.request.get("subject")
+		content = self.request.get("content")
+
+		if subject and content:
+			b = Blog(subject = subject, content = content)
+			b.put()  #GAE assigned the object a key here 
+
+			pageID = str(b.key().id())  #get the object's key as an integer 
+			self.redirect('/blog/%s' %pageID) #redirect to the Permalink page
+		else:
+			error = "Please submit both a subject and content"
+			self.render_front("post.html", subject = subject, 
+							  			   content = content,
+							               error = error)
+
+class PermaLinkHandler(Handler):
+
+	def get(self, page_id):
+		key = db.Key.from_path('Blog', int(page_id))   #get the key from the UEL 
+		blog = db.get(key)		#get the blog from the page key 
+
+		if not blog:
+			self.error(404)
+			return
+
+		self.render("blog_front.html", blog = blog)
+
 
 class LogoutHandler(Handler):
 	def get(self):
@@ -359,6 +398,8 @@ app = webapp2.WSGIApplication([
 	('/login', Login), 
 	('/welcome', WelcomeHandler),
 	('/logout', LogoutHandler),
+	('/blog/newpost', PostHandler),
+	webapp2.Route(r'/blog/<page_id>', handler = PermaLinkHandler),
 	('/blog', BlogHandler),
 	('/blog.json', BlogJsonHandler), 
 	('/blogLocation', BlogWithLocation)
