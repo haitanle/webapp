@@ -307,7 +307,7 @@ class BlogJsonHandler(Handler):
 		#retrieve last 10 blog entry
 		posts = Blog.all().order('-created').run(limit=10)
 		 
-		#put blog information into dictionary, store all dictionary in list 
+		#put bplog information into dictionary, store all dictionary in list 
 		blogList = []
 		for post in posts:
 			time = post.created.strftime("%a %b %d %H:%M:%S %Y")   
@@ -389,15 +389,17 @@ class PermaLinkHandler(Handler):
 
 class PermaLinkJsonHandler(Handler):
 	
-	def get(self, u_id):
-		key = db.Key.from_path('Blog', int(u_id))
-		blog = db.get(key)
+	def get(self, page_id):
 
-		if not blog:
-			self.error(404)
-			return
+		key = db.Key.from_path('Blog', int(page_id))   #get the key from the UEL 
+		blog = db.get(key)	
+		 
+		#put bplog information into dictionary, store all dictionary in list 
+		time = blog.created.strftime("%a %b %d %H:%M:%S %Y")   
+		blogDict = dict(subject = blog.subject, content = blog.content, created = time)		
 
-		self.render("blog_front.html", blog = blog)
+		#write out list in HTML page
+		self.write(json.dumps(blogDict))
 
 
 
