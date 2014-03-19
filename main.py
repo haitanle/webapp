@@ -298,6 +298,7 @@ class BlogHandler(Handler):   #'/blog'
 			self.render("blog.html", error = msg)
 
 import time 
+import json 
 
 class BlogJsonHandler(Handler):
 	
@@ -315,7 +316,7 @@ class BlogJsonHandler(Handler):
 		
 
 		#write out list in HTML page
-		self.write((blogList))
+		self.write(json.dumps(blogList))
 
 
 class BlogWithLocation(Handler):
@@ -352,7 +353,7 @@ class BlogWithLocation(Handler):
 			msg = "Enter both a subject and content"
 			self.render("blog.html", error = msg)
 
-class PostHandler(Handler):
+class NewPostHandler(Handler):
 	
 	def get(self):
 		self.render("post.html")
@@ -386,6 +387,19 @@ class PermaLinkHandler(Handler):
 
 		self.render("blog_front.html", blog = blog)
 
+class PermaLinkJsonHandler(Handler):
+	
+	def get(self, u_id):
+		key = db.Key.from_path('Blog', int(u_id))
+		blog = db.get(key)
+
+		if not blog:
+			self.error(404)
+			return
+
+		self.render("blog_front.html", blog = blog)
+
+
 
 class LogoutHandler(Handler):
 	def get(self):
@@ -398,8 +412,9 @@ app = webapp2.WSGIApplication([
 	('/login', Login), 
 	('/welcome', WelcomeHandler),
 	('/logout', LogoutHandler),
-	('/blog/newpost', PostHandler),
-	webapp2.Route(r'/blog/<page_id>', handler = PermaLinkHandler),
+	('/blog/newpost', NewPostHandler),
+	('/blog/([0-9]+)', PermaLinkHandler), 
+	('/blog/([0-9]+).json', PermaLinkJsonHandler),  #get Json output for each new post 
 	('/blog', BlogHandler),
 	('/blog.json', BlogJsonHandler), 
 	('/blogLocation', BlogWithLocation)
