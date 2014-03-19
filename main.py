@@ -229,7 +229,7 @@ class Registration(Signup):  #uses 'get' and 'post' method of Signup
 					           self.user_password, self.user_email)
 			newUser.put()
 			self.login(newUser) 
-			self.redirect('/blog')
+			self.redirect('/welcome')
 
 class Login(Handler):
 	
@@ -316,6 +316,7 @@ class BlogJsonHandler(Handler):
 		
 
 		#write out list in HTML page
+		self.response.headers['Content-Type'] = 'application/json; charset=UTF-8'
 		self.write(json.dumps(blogList))
 
 
@@ -399,6 +400,7 @@ class PermaLinkJsonHandler(Handler):
 		blogDict = dict(subject = blog.subject, content = blog.content, created = time)		
 
 		#write out list in HTML page
+		self.response.headers['Content-Type']= 'application/json; charset=UTF-8'
 		self.write(json.dumps(blogDict))
 
 
@@ -414,11 +416,11 @@ app = webapp2.WSGIApplication([
 	('/login', Login), 
 	('/welcome', WelcomeHandler),
 	('/logout', LogoutHandler),
-	('/blog/newpost', NewPostHandler),
+	('/newpost', NewPostHandler),
 	('/blog/([0-9]+)', PermaLinkHandler), 
 	('/blog/([0-9]+).json', PermaLinkJsonHandler),  #get Json output for each new post 
-	('/blog', BlogHandler),
-	('/blog.json', BlogJsonHandler), 
+	('/', BlogHandler),
+	('/.json', BlogJsonHandler), 
 	('/blogLocation', BlogWithLocation)
 	]
 	, debug =True)
