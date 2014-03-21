@@ -1,3 +1,4 @@
+
 import jinja2   #had to add Jinja2 under libraries in app.yaml
 import os     #this module lets us get the path to our 'templates' folder 
 import webapp2
@@ -106,6 +107,7 @@ def username_exist(username):
 			return True, userID  
 	return False, None
 
+import json
 
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir), autoescape = True)
@@ -140,6 +142,14 @@ class Handler(webapp2.RequestHandler):
 
 	def logout(self):
 		self.response.headers.add_header('Set-Cookie', 'user_id =; path = /')
+
+	def render_json(self, d):
+		jsonString = json.dumps(d)
+		self.response.headers['Content-Type']= 'application/json; charset=UTF-8'
+		self.write(jsonString)
+
+
+
 
 from xml.dom import minidom
 
@@ -349,7 +359,7 @@ class BlogWithLocation(Handler):
 		if subject and content:
 			post = Blog(subject = subject, content = content, user = user, coors = coors)
 			post.put()
-			self.redirect('/blog')
+			self.redirect('/blogLocation')
 		else:
 			msg = "Enter both a subject and content"
 			self.render("blog.html", error = msg)
@@ -417,9 +427,9 @@ app = webapp2.WSGIApplication([
 	('/welcome', WelcomeHandler),
 	('/logout', LogoutHandler),
 	('/newpost', NewPostHandler),
-	('/blog/([0-9]+)', PermaLinkHandler), 
+	('/blog/([0-9]+)?(?:.json)?', PermaLinkHandler),   # ?(?:.json)? is a 're' used to allow optional .json page 
 	('/blog/([0-9]+).json', PermaLinkJsonHandler),  #get Json output for each new post 
-	('/', BlogHandler),
+	('/?(?:.json)?', BlogHandler),
 	('/.json', BlogJsonHandler), 
 	('/blogLocation', BlogWithLocation)
 	]
